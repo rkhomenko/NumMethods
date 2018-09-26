@@ -155,15 +155,75 @@ def p1d_implicit_fdm(p1d, x1, x2, steps_count, t1, t2, sigma):
         step += 1
 
 
+def p1d_crank_nicolson_fdm(p1d, x1, x2, steps_count, t1, t2, sigma, teta):
+    n, h, tau = calculate_steps(p1d, x1, x2, steps_count, t1, t2, sigma)
+    omega = tau * p1d.b / 2 / h
+
+    u1 = np.zeros(n)
+    u2 = np.zeros(n)
+    a = np.zeros(n)
+    b = np.zeros(n)
+    c = np.zeros(n)
+    d = np.zeros(n)
+    xk = np.zeros(n)
+
+    a[0] = 0
+    b[0] = 1
+    c[0] = p1d.alpha / h / (p1d.beta - p1d.alpha / h)
+
+    for i in range(1, n - 1):
+        a[i] = omega - teta * sigma
+        b[i] = 1 + 2 * teta * sigma - p1d.c * tau
+        c[i] = - (teta * sigma + omega)
+
+    a[n - 1] = - p1d.gamma / h / (p1d.delta + p1d.gamma / h)
+    b[n - 1] = 1
+    c[n - 1] = 0
+
+    for i in range(0, n):
+        xk[i] = x1 + i * h
+        u1[i] = p1d.phi(xk[i])
+
+    f = np.zeros(n)
+    tk = t1 + tau
+    step = 0
+    while tk <= t2:
+        if step % 2 == 0:
+            u_prev = u1
+            u = u2
+        else:
+            u_prev = u2
+            u = u1
+
+        d[0] = 1 / (p1d.beta - p1d.alpha / h) * p1d.mu1(tk)
+        for i in range(1, n - 1):
+            d[i] = (sigma * (1 - teta) + omega) * u_prev[i + 1] + \
+                   (1 - 2 * sigma * (1 - teta) + p1d.c * tau) * u_prev[i] + \
+                   (sigma * (1 - teta) - omega) * u_prev[i - 1] + \
+                   tau * p1d.f(xk[i], tk)
+        d[n - 1] = 1 / (p1d.delta + p1d.gamma / h) * p1d.mu2(tk)
+
+        for i in range(0, n):
+            f[i] = np.abs(u[i] - p1d.f(xk[i], tk))
+        print(f)
+
+        tdma(u, a, b, c, d)
+        plt.plot(xk, u)
+
+        tk += tau
+        step += 1
+
+
 p1d_7 = P1D(a=1, b=0, c=0, f=lambda x, t: 0.5 * np.exp(-0.5 * t) * np.sin(x),
-          phi=np.sin, alpha=1, beta=0, mu1=lambda t: np.exp(-0.5 * t),
-          gamma=1, delta=0, mu2=lambda t: -np.exp(-0.5 * t))
+            phi=np.sin, alpha=1, beta=0, mu1=lambda t: np.exp(-0.5 * t),
+            gamma=1, delta=0, mu2=lambda t: -np.exp(-0.5 * t))
 a = 1
 b = 1
 c = -1
 p1d_10 = P1D(a=a, b=b, c=c, f=lambda x, t: 0,
-          phi=np.sin, alpha=1, beta=1, mu1=lambda t: np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)),
-          gamma=1, delta=1, mu2=lambda t: -np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)))
+             phi=np.sin, alpha=1, beta=1, mu1=lambda t: np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)),
+             gamma=1, delta=1, mu2=lambda t: -np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)))
 # p1d_explicit_fdm(p1d_10, 0, np.pi, 10, 0, 2, 0.45)
-p1d_implicit_fdm(p1d_7, 0, np.pi, 10, 0, 2, 0.4)
+# p1d_implicit_fdm(p1d_7, 0, np.pi, 10, 0, 2, 0.4)
+p1d_crank_nicolson_fdm(p1d_7, 0, np.pi, 10, 0, 2, 0.4, 0.5)
 plt.show()
