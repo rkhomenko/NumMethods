@@ -125,7 +125,7 @@ def p1d_implicit_fdm(p1d, x1, x2, steps_count, t1, t2, sigma):
         b[i] = 1 + 2 * sigma - p1d.c * tau
         c[i] = -(sigma + omega)
 
-    a[n - 1] = - p1d.gamma / h / (p1d.delta - p1d.gamma / h)
+    a[n - 1] = - p1d.gamma / h / (p1d.delta + p1d.gamma / h)
     b[n - 1] = 1
     c[n - 1] = 0
 
@@ -146,7 +146,7 @@ def p1d_implicit_fdm(p1d, x1, x2, steps_count, t1, t2, sigma):
         d[0] = 1 / (p1d.beta - p1d.alpha / h) * p1d.mu1(tk)
         for i in range(1, n - 1):
             d[i] = u_prev[i] + tau * p1d.f(xk[i], tk)
-        d[n - 1] = - 1 / (p1d.delta + p1d.gamma / h) * p1d.mu2(tk)
+        d[n - 1] = 1 / (p1d.delta + p1d.gamma / h) * p1d.mu2(tk)
 
         tdma(u, a, b, c, d)
         plt.plot(xk, u)
