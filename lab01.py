@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tkinter
+from tkinter import *
 
 
 class P1D:
@@ -226,23 +226,67 @@ def error_and_plot(p1d, xk, u, t):
     plt.show()
 
 
-a = 1
-b = 1
-c = -1
-t1 = 0
-t2 = 1
-sigma = 0.45
-p1d_7 = P1D(a=a, b=0, c=0, f=lambda x, t: 0.5 * np.exp(-0.5 * t) * np.sin(x),
-            phi=np.sin, alpha=1, beta=0, mu1=lambda t: np.exp(-0.5 * t),
-            gamma=1, delta=0, mu2=lambda t: -np.exp(-0.5 * t),
-            solution=lambda x, t: np.exp(-0.5 * t) * np.sin(x))
-p1d_10 = P1D(a=a, b=b, c=c, f=lambda x, t: 0,
-             phi=np.sin, alpha=1, beta=1, mu1=lambda t: np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)),
-             gamma=1, delta=1, mu2=lambda t: -np.exp((c - a) * t) * (np.cos(b * t) + np.sin(b * t)),
-             solution=lambda x, t: np.exp((c - a) * t) * np.sin(x + b * t))
-# xk, u = p1d_explicit_fdm(p1d_10, 0, np.pi, 100, t1, t2, sigma)
-# error_and_plot(p1d_10, xk, u, t2)
-# xk, u = p1d_implicit_fdm(p1d_10, 0, np.pi, 20, t1, t2, 0.4)
-# error_and_plot(p1d_10, xk, u, t2)
-xk, u = p1d_crank_nicolson_fdm(p1d_7, 0, np.pi, 20, t1, t2, sigma, 0.5)
-error_and_plot(p1d_7, xk, u, t2)
+# GUI creation procedures
+
+def create_input_one(root, row, col, text, string_var):
+    label = Label(root, text=text)
+    label.grid(row=row, column=col)
+    entry = Entry(root, width=20, textvariable=string_var)
+    entry.grid(row=row, column=col + 1)
+
+
+def create_input_two(root, row, col, text1, text2, string_vars):
+    create_input_one(root, row, col, text1, string_vars[0])
+    create_input_one(root, row, col + 2, text2, string_vars[1])
+
+
+def create_listbox(root, row, col, entries):
+    list_box = Listbox(root, height=3, width=15, selectmode=SINGLE)
+    for entry in entries:
+        list_box.insert(END, entry)
+    list_box.grid(row=row, column=col)
+    return list_box
+
+
+root = Tk()
+root.title('NumMethods Lab 1')
+
+string_vars = [StringVar() for i in range(7)]
+
+create_input_two(root, 0, 0, "x1:", "x2:", string_vars[0:2])
+create_input_two(root, 1, 0, "t1:", "t2:", string_vars[2:4])
+create_input_one(root, 2, 0, "Steps:", string_vars[4])
+create_input_one(root, 3, 0, "Sigma:", string_vars[5])
+create_input_one(root, 4, 0, "Teta:", string_vars[6])
+scheme = create_listbox(root, 0, 4, ["Explicit", "Implicit", "Krank-Nicolson"])
+bound_cond = create_listbox(root, 0, 5, ["2p1", "3p2", "2p2"])
+
+
+def callback():
+    float_vars = [float(s.get()) for s in string_vars]
+    print(float_vars)
+    x1 = float_vars[0]
+    x2 = float_vars[1]
+    t1 = float_vars[2]
+    t2 = float_vars[3]
+    steps = int(float_vars[4])
+    sigma = float_vars[5]
+    teta = float_vars[6]
+
+    scheme_dict = {0: p1d_explicit_fdm,
+                   1: p1d_implicit_fdm,
+                   2: lambda p1d, x1, x2, steps, t1, t2, sigma: p1d_crank_nicolson_fdm(p1d, x1, x2, steps, t1, t2,
+                                                                                       sigma, teta)}
+
+    p1d_7 = P1D(a=1, b=0, c=0, f=lambda x, t: 0.5 * np.exp(-0.5 * t) * np.sin(x),
+                phi=np.sin, alpha=1, beta=0, mu1=lambda t: np.exp(-0.5 * t),
+                gamma=1, delta=0, mu2=lambda t: -np.exp(-0.5 * t),
+                solution=lambda x, t: np.exp(-0.5 * t) * np.sin(x))
+    scheme_type = scheme.curselection()[0]
+    xk, u = scheme_dict[scheme_type](p1d_7, x1, x2, steps, t1, t2, sigma)
+    error_and_plot(p1d_7, xk, u, t2)
+
+
+b = Button(root, text="Calc&Plot", command=callback)
+b.grid(row=5, column=0)
+root.mainloop()
