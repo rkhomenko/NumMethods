@@ -150,9 +150,98 @@ def h1d_solver_explicit(h1d, x1, x2, n, sigma, t1, t2,
     return u2, tk
 
 
-def h1d_solver_implicit(equation_params, x1, x2, n, sigma, t1, t2,
+def tdma(u, a, b, c, d):
+    n = len(u)
+    c = np.copy(c)
+
+    for i in range(1, n):
+        m = a[i] / c[i - 1]
+        c[i] = c[i] - m * b[i - 1]
+        d[i] = d[i] - m * d[i - 1]
+
+    u[n - 1] = d[n - 1] / c[n - 1]
+
+    for i in reversed(range(0, n - 1)):
+        u[i] = (d[i] - b[i] * u[i + 1]) / c[i]
+
+
+def h1d_solver_implicit(h1d, x1, x2, n, sigma, t1, t2,
                         initial, boundary):
-    pass
+    n, h, tau, omega = calculate_grid(h1d, x1, x2, n, t1, t2, sigma)
+    xi = h1d.d * tau / 2
+
+    a = np.zeros(n)
+    b = np.zeros(n)
+    c = np.zeros(n)
+    d = np.zeros(n)
+    x = np.arange(x1, x2 + h, h)
+    t = np.arange(t1, t2 + tau, tau)
+
+    u_k_2 = h1d.phi(x)
+    u_k_1 = initial_condition_approximation(h1d, u_k_2, x, tau, initial)
+    u_k = np.zeros(u_k_1.shape)
+
+    for i in range(1, n - 1):
+        a[i] = -sigma + omega
+        c[i] = 1 + xi + 2 * sigma - h1d.c * tau ** 2
+        b[i] = -(sigma + omega)
+
+    if boundary == BoundaryType.A1P2:
+        c[0] = 1
+        b[0] = h1d.alpha / h / (h1d.beta - h1d.alpha / h)
+        a[n - 1] = - h1d.gamma / h / (h1d.delta + h1d.gamma / h)
+        c[n - 1] = 1
+    elif boundary == BoundaryType.A2P3:
+        k1 = 2 * h * h1d.beta - 3 * h1d.alpha
+        k2 = 2 * h * h1d.delta + 3 * h1d.gamma
+        c[0] = k1 - h1d.alpha * (omega - sigma) / (omega + sigma)
+        b[0] = 4 * h1d.alpha - h1d.alpha / (sigma + omega) * (1 + xi + 2 * sigma - h1d.c * tau ** 2)
+        a[n - 1] = - h1d.gamma / (omega - sigma) * (1 + xi + 2 * sigma - h1d.c * tau ** 2) - 4 * h1d.gamma
+        c[n - 1] = k2 + h1d.gamma * (omega + sigma) / (omega - sigma)
+    elif boundary == BoundaryType.A2P2:
+        c[0] = - 2 * h1d.a / h - h / tau ** 2 + h1d.c * h + \
+               - h1d.d * h / 2 / tau + \
+               h1d.beta / h1d.alpha * (2 * h1d.a - h1d.b * h)
+        b[0] = 2 * h1d.a / h
+        a[n - 1] = -b[0]
+        c[n - 1] = 2 * h1d.a / h + h / tau ** 2 - h1d.c * h + \
+                   + h1d.d * h / 2 / tau + \
+                   h1d.delta / h1d.gamma * (2 * h1d.a + h1d.b * h)
+    else:
+        raise ValueError('Boundary approximation type')
+
+    u1 = u_k_2
+    u2 = u_k_1
+    u3 = u_k
+    
+    for k in range(1, t.size):
+        tk = t1 + k * tau
+
+        for i in range(1, n - 1):
+            d[i] = 2 * u2[i] - (1 - xi) * u1[i] + tau ** 2 * h1d.f(x[i], tk)
+
+        if boundary == BoundaryType.A1P2:
+            d[0] = 1 / (h1d.beta - h1d.alpha / h) * h1d.mu1(tk)
+            d[n - 1] = 1 / (h1d.delta + h1d.gamma / h) * h1d.mu2(tk)
+        elif boundary == BoundaryType.A2P3:
+            d[0] = 2 * h * h1d.mu1(tk) + h1d.alpha * d[1] / (- sigma - omega)
+            d[n - 1] = 2 * h * h1d.mu2(tk) - h1d.gamma * d[n - 2] / (omega - sigma)
+        elif boundary == BoundaryType.A2P2:
+            d[0] = h / tau ** 2 * (u1[0] - 2 * u2[0]) - h * h1d.f(x[0], tk) + \
+                   - h1d.d * h / 2 / tau * u1[0] + \
+                   (2 * h1d.a - h1d.b * h) / h1d.alpha * h1d.mu1(tk)
+            d[n - 1] = h / tau ** 2 * (- u1[0] + 2 * u2[0]) + h * h1d.f(x[n - 1], tk) + \
+                       h1d.d * h / 2 / tau * u1[0] + \
+                       (2 * h1d.a + h1d.b * h) / h1d.alpha * h1d.mu2(tk)
+
+        tdma(u3, a, b, c, d)
+        
+        tmp = u1
+        u1 = u2
+        u2 = u3
+        u3 = tmp
+    
+    return u2, tk
 
 
 def h1d_solver(equation_params, x1, x2, n, sigma, t1, t2,
@@ -162,7 +251,7 @@ def h1d_solver(equation_params, x1, x2, n, sigma, t1, t2,
         return h1d_solver_explicit(equation_params, x1, x2, n, sigma, t1, t2,
                                    initial, boundary)
     elif scheme == SchemeType.IMPLICIT:
-        h1d_solver_implicit(equation_params, x1, x2, n, sigma, t1, t2,
+        return h1d_solver_implicit(equation_params, x1, x2, n, sigma, t1, t2,
                             initial, boundary)
     else:
         raise ValueError("Scheme type")
