@@ -57,7 +57,7 @@ e2d0 = EquationParams(x=(0, 1),
 def calc(e2d, n, eps):
     x1, x2 = e2d.x
     y1, y2 = e2d.y
-    res1, nx, ny, hx, hy = e2d_solver(SolverMethod.SOR, e2d, n, n, eps)
+    res1, nx, ny, hx, hy = e2d_solver(SolverMethod.SOR, e2d, n, n, eps, 1.9)
     sol = np.zeros((nx, ny), dtype=np.float64)
     for i in range(0, nx):
         for j in range(0, ny):

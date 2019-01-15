@@ -103,9 +103,8 @@ def seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
 
 
 @nb.jit(nopython=True)
-def sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
+def sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps):
     counter = 0
-    omega = 1.9
     while True:
         for i in range(1, nx - 1):
             for j in range(1, ny - 1):
@@ -124,8 +123,7 @@ def sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
     return u1
 
 
-
-def e2d_solver(method, e2d, steps_x, steps_y, eps):
+def e2d_solver(method, e2d, steps_x, steps_y, eps, omega=1.5):
     x1, x2 = e2d.x
     y1, y2 = e2d.y
     nx, hx = calculate_grid(x1, x2, steps_x)
@@ -158,7 +156,7 @@ def e2d_solver(method, e2d, steps_x, steps_y, eps):
     elif method == SolverMethod.Seidel:
         u = seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.SOR:
-        u = sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+        u = sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps)
     else:
         raise RuntimeError("Bad method type")
 
