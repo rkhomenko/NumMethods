@@ -26,6 +26,19 @@ class SolverMethod:
     FractSteps = 'fract_steps'   # Fractional Steps Method
 
 
+@nb.jit(nopython=True)
+def norm_inf(arr, nx, ny):
+    result = -1
+    for j in range(0, ny):
+        sum = 0
+        for i in range(0, nx):
+            sum += arr[i][j]
+        if result < sum:
+            result = sum
+
+    return result
+
+
 #@nb.jit(nopython=True)
 def tdma(u, a, b, c, d):
     n = len(u)
@@ -80,12 +93,16 @@ def ad_calc(sigma, omega, hx, hy, ht,
     ux = np.zeros(nx, dtype=np.float64)
     uy = np.zeros(ny, dtype=np.float64)
 
-    for k in range(0, nt):
+    for i in range(0, ny):
+        for j in range(0, ny):
+            u1[i][j] = phi(x1 + i * hx, y1 + j * hy)
+
+    for k in range(1, nt):
         tk1 = t1 + (k + 0.5) * ht
         tk2 = t1 + (k + 1) * ht
 
         # k + 1/2
-        for j in range(1, ny):
+        for j in range(1, ny - 1):
             yj = y1 + j * hy
 
             dx[0] = mu1(yj, tk1)
@@ -102,9 +119,16 @@ def ad_calc(sigma, omega, hx, hy, ht,
             for i in range(0, nx):
                 u2[i][j] = ux[i]
 
+        for i in range(0, nx):
+            u2[i][0] = 0
+            u2[i][ny - 1] = 0
+
+        for i in range(0, nx):
+            u2[i][0] = mu3(x1 + i * hx, tk1)
+            u2[i][ny - 1] = u2[i][ny - 2] + hy * mu4(x1 + i * hx, tk2)
 
         # k + 1
-        for i in range(1, nx):
+        for i in range(1, nx - 1):
             xi = x1 + i * hx
 
             dy[0] = mu3(xi, tk2)
@@ -114,12 +138,20 @@ def ad_calc(sigma, omega, hx, hy, ht,
                 yj = y1 + j * hy
                 dy[j] = - sigma * u2[i + 1][j] \
                         + (2 * sigma - 1) * u2[i][j] \
-                        - sigma * u2[i - 1][j + 1] \
+                        - sigma * u2[i - 1][j] \
                         - ht / 2 * f(xi, yj, tk2)
 
             tdma(uy, ay, by, cy, dy)
             for j in range(0, ny):
                 u3[i][j] = uy[j]
+
+        for j in range(0, ny):
+            u3[0][j] = 0
+            u3[nx - 1][j] = 0
+
+        for j in range(0, ny):
+            u3[0][j] = mu1(y1 + j * hy, tk2)
+            u3[nx - 1][j] = u3[nx - 2][j] + hx * mu2(y1 + j * hy, tk2)
 
         u1, u3 = u3, u1
 
@@ -169,7 +201,7 @@ def p2d_solver(method, p2d, steps_x, steps_y, steps_t):
     else:
         raise RuntimeError("Bad method type")
 
-    return results
+    return results, nx, ny, hx, hy
 
 
 
