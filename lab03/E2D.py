@@ -19,10 +19,10 @@ class EquationParams:
         self.solution = solution
 
 class SolverMethod:
-    Simple = 0x01
-    Leibmann = 0x02
-    Seidel = 0x03
-    SOR = 0x04
+    Simple = 'simple'
+    Leibmann = 'leibmann'
+    Seidel = 'seidel'
+    SOR = 'sor'
 
 
 def calculate_grid(start, end, steps):

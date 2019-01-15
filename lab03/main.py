@@ -2,7 +2,106 @@ import numpy as np
 from E2D import EquationParams, SolverMethod, norm_inf, e2d_solver
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+import argparse as argp
 
+
+SOLVER_METHODS = [
+    SolverMethod.Leibmann,
+    SolverMethod.Seidel,
+    SolverMethod.SOR
+]
+
+
+# Argument names
+X = 'x'
+Y = 'y'
+NX = 'nx'
+NY = 'ny'
+METHOD = 'method'
+PLOT_ERRORS = 'plot_errors'
+PLOT='plot'
+SHOW_3D = 'show_3d'
+
+
+parser = argp.ArgumentParser(description='Lab 3: E2D solver')
+parser.add_argument('-x', '--x', nargs='+', type=float, default=[0, np.pi / 2],
+                    help='x coordinate domain')
+parser.add_argument('-y', '--y', nargs='+', type=float, default=[0, np.pi / 2],
+                    help='y coordinate domain')
+parser.add_argument('-X', '--nx', type=int, default=5,
+                    help='x intervals count')
+parser.add_argument('-Y', '--ny', type=int, default=5,
+                    help='y intervals count')
+parser.add_argument('-m', '--method', nargs='+', type=str, choices=SOLVER_METHODS,
+                    default=[SolverMethod.SOR],
+                    help='solver method')
+parser.add_argument('-p', '--plot',
+                    default=False,
+                    action='store_true',
+                    help='plot')
+parser.add_argument('-s', '--show-3d',
+                    default=False,
+                    action='store_true',
+                    help='show 3d plot')
+parser.add_argument('-e', '--plot-errors',
+                    default=False,
+                    action='store_true',
+                    help='plot error')
+args = vars(parser.parse_args())
+
+DESCRIPTION = "Lab 3: E2D solver"
+VARIANT = """
+ 2      2
+∂  u   ∂  u        ∂u       ∂u
+---- + ---- = - 2 ---- - 2 ---- - 4u
+   2      2        ∂x       ∂y
+∂ x    ∂ y
+
+           -y
+u(0, y) = e   cos y
+
+ /      \\
+ | π    |
+u|---, y| = 0
+ \ 2    /
+
+           -x
+u(x, 0) = e   cos x
+
+ /      \\
+ |    π |
+u|x, ---| = 0
+ \    2 /
+ 
+************************* Solution *************************
+           - x - y
+u(x, y) = e        cos x cos y
+************************************************************
+
+"""
+
+
+def print_options(args_dict):
+    x = args_dict[X]
+    y = args_dict[Y]
+    nx = args_dict[NX]
+    ny = args_dict[NY]
+    methods = args_dict[METHOD]
+    show_3d = args_dict[SHOW_3D]
+    plot = args_dict[PLOT]
+    plot_errors = args_dict[PLOT_ERRORS]
+    print(f"X domain: {x}")
+    print(f"X interval count: {nx}")
+    print(f"Y domain: {y}")
+    print(f"Y interval count: {ny}")
+    print(f"Methods: {methods}")
+
+    return x, y, nx, ny, methods, plot, show_3d, plot_errors
+
+
+print(DESCRIPTION)
+print(VARIANT)
+x, y, steps_x, steps_y, methods, plot, show_3d, plot_errors = print_options(args)
 
 def plot_data(x1, x2, y1, y2, hx, hy, sol):
     x = np.arange(x1, x2 + hx, hx)
@@ -69,5 +168,5 @@ def calc(e2d, n, eps):
     # plot_data(x1, x2, y1, y2, hx, hy, res2)
 
 
-for n in range(5, 100):
-    calc(e2d10, n, 1e-6)
+# for n in range(5, 100):
+#     calc(e2d10, n, 1e-6)
