@@ -47,7 +47,6 @@ def norm_inf(arr, nx, ny):
 @nb.jit(nopython=True)
 def simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
     n = nx
-    counter = 0
     while True:
         for i in range(1, n - 1):
             for j in range(1, n - 1):
@@ -56,7 +55,6 @@ def simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
         if norm_inf(np.abs(u2 - u1), n, n) < eps:
             break
 
-        counter += 1
         u1, u2 = u2, u1
 
     return u1
@@ -64,7 +62,7 @@ def simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
 
 @nb.jit(nopython=True)
 def leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
-    counter = 0
+    errs = []
     while True:
         for i in range(1, nx - 1):
             for j in range(1, ny - 1):
@@ -72,19 +70,20 @@ def leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
                            d * u1[i][j + 1] + e * u1[i][j - 1]
                 u2[i][j] /= a
 
-        if norm_inf(np.abs(u2 - u1), nx, ny) < eps:
+        err = norm_inf(np.abs(u2 - u1), nx, ny)
+        errs.append(err)
+
+        if err < eps:
             break
 
-        counter += 1
         u1, u2 = u2, u1
 
-    print(counter)
-    return u1
+    return u1, errs
 
 
 @nb.jit(nopython=True)
 def seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
-    counter = 0
+    errs = []
     while True:
         for i in range(1, nx - 1):
             for j in range(1, ny - 1):
@@ -92,19 +91,20 @@ def seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
                            d * u1[i][j + 1] + e * u2[i][j - 1]
                 u2[i][j] /= a
 
-        if norm_inf(np.abs(u2 - u1), nx, ny) < eps:
+        err = norm_inf(np.abs(u2 - u1), nx, ny)
+        errs.append(err)
+
+        if err < eps:
             break
 
-        counter += 1
         u1, u2 = u2, u1
 
-    print(counter)
-    return u1
+    return u1, errs
 
 
 @nb.jit(nopython=True)
 def sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps):
-    counter = 0
+    errs = []
     while True:
         for i in range(1, nx - 1):
             for j in range(1, ny - 1):
@@ -113,14 +113,15 @@ def sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps):
                 u2[i][j] /= a
                 u2[i][j] = omega * u2[i][j] + (1 - omega) * u1[i][j]
 
-        if norm_inf(np.abs(u2 - u1), nx, ny) < eps:
+        err = norm_inf(np.abs(u2 - u1), nx, ny)
+        errs.append(err)
+
+        if err < eps:
             break
 
-        counter += 1
         u1, u2 = u2, u1
 
-    print(counter)
-    return u1
+    return u1, errs
 
 
 def e2d_solver(method, e2d, steps_x, steps_y, eps, omega=1.5):
@@ -149,15 +150,16 @@ def e2d_solver(method, e2d, steps_x, steps_y, eps, omega=1.5):
     e = - (e2d.a / hy ** 2 + e2d.c / 2 / hy)
 
     u = None
+    errs = None
     if method == SolverMethod.Simple:
-        u = simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+        u, errs = simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.Leibmann:
-        u = leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+        u, errs = leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.Seidel:
-        u = seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+        u, errs = seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.SOR:
-        u = sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps)
+        u, errs = sor_calc(u1, u2, nx, ny, a, b, c, d, e, omega, eps)
     else:
         raise RuntimeError("Bad method type")
 
-    return u, nx, ny, hx, hy
+    return u, errs, nx, ny, hx, hy
