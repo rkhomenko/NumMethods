@@ -39,7 +39,7 @@ def norm_inf(arr, nx, ny):
     return result
 
 
-#@nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def tdma(u, a, b, c, d):
     n = len(u)
     c = np.copy(c)
@@ -51,11 +51,12 @@ def tdma(u, a, b, c, d):
 
     u[n - 1] = d[n - 1] / c[n - 1]
 
-    for i in reversed(range(0, n - 1)):
+    for k in range(0, n - 1):
+        i = n - 2 - k
         u[i] = (d[i] - b[i] * u[i + 1]) / c[i]
 
 
-#@nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def ad_calc(sigma, omega, hx, hy, ht,
             nx, ny, nt,
             x1, x2,
@@ -105,15 +106,15 @@ def ad_calc(sigma, omega, hx, hy, ht,
         for j in range(1, ny - 1):
             yj = y1 + j * hy
 
-            dx[0] = mu1(yj, tk1)
-            dx[nx - 1] = hx * mu2(yj, tk1)
+            dx[0] = mu1(yj, tk2)
+            dx[nx - 1] = hx * mu2(yj, tk2)
 
             for i in range(1, nx - 1):
                 xi = x1 + i * hx
                 dx[i] = - omega * u1[i][j + 1] \
                         + (2 * omega - 1) * u1[i][j] \
                         - omega * u1[i][j - 1] \
-                        - ht / 2 * f(xi, yj, tk1)
+                        - ht / 2 * f(xi, yj, tk2)
 
             tdma(ux, ax, bx, cx, dx)
             for i in range(0, nx):
