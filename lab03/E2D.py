@@ -18,10 +18,9 @@ class EquationParams:
         self.mu4 = mu4
         self.solution = solution
 
-
 class SolverMethod:
     Simple = 0x01
-    Leibman = 0x02
+    Leibmann = 0x02
     Seidel = 0x03
     SOR = 0x04
 
@@ -79,17 +78,51 @@ def leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
         counter += 1
         u1, u2 = u2, u1
 
+    print(counter)
     return u1
 
 
 @nb.jit(nopython=True)
 def seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
-    pass
+    counter = 0
+    while True:
+        for i in range(1, nx - 1):
+            for j in range(1, ny - 1):
+                u2[i][j] = b * u1[i + 1][j] + c * u2[i - 1][j] + \
+                           d * u1[i][j + 1] + e * u2[i][j - 1]
+                u2[i][j] /= a
+
+        if norm_inf(np.abs(u2 - u1), nx, ny) < eps:
+            break
+
+        counter += 1
+        u1, u2 = u2, u1
+
+    print(counter)
+    return u1
 
 
 @nb.jit(nopython=True)
 def sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
-    pass
+    counter = 0
+    omega = 1.9
+    while True:
+        for i in range(1, nx - 1):
+            for j in range(1, ny - 1):
+                u2[i][j] = b * u1[i + 1][j] + c * u2[i - 1][j] + \
+                           d * u1[i][j + 1] + e * u2[i][j - 1]
+                u2[i][j] /= a
+                u2[i][j] = omega * u2[i][j] + (1 - omega) * u1[i][j]
+
+        if norm_inf(np.abs(u2 - u1), nx, ny) < eps:
+            break
+
+        counter += 1
+        u1, u2 = u2, u1
+
+    print(counter)
+    return u1
+
 
 
 def e2d_solver(method, e2d, steps_x, steps_y, eps):
@@ -120,12 +153,12 @@ def e2d_solver(method, e2d, steps_x, steps_y, eps):
     u = None
     if method == SolverMethod.Simple:
         u = simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
-    elif method == SolverMethod.Leibman:
+    elif method == SolverMethod.Leibmann:
         u = leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.Seidel:
         u = seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     elif method == SolverMethod.SOR:
-        u = sor_solver(u1, u2, nx, ny, a, b, c, d, e, eps)
+        u = sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
     else:
         raise RuntimeError("Bad method type")
 

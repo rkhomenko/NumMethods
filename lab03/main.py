@@ -15,6 +15,7 @@ def plot_data(x1, x2, y1, y2, hx, hy, sol):
     ax.plot_wireframe(X, Y, Z)
     plt.show()
 
+
 e2d10 = EquationParams(x=(0, np.pi / 2),
                        y=(0, np.pi / 2),
                        a=1, b=-2, c=-2, d=-4,
@@ -56,8 +57,7 @@ e2d0 = EquationParams(x=(0, 1),
 def calc(e2d, n, eps):
     x1, x2 = e2d.x
     y1, y2 = e2d.y
-    res1, nx, ny, hx, hy = e2d_solver(SolverMethod.Leibman, e2d, n, n, eps)
-
+    res1, nx, ny, hx, hy = e2d_solver(SolverMethod.SOR, e2d, n, n, eps)
     sol = np.zeros((nx, ny), dtype=np.float64)
     for i in range(0, nx):
         for j in range(0, ny):
