@@ -19,6 +19,19 @@ class EquationParams:
         self.solution = solution
 
 
+class SolverMethod:
+    Simple = 0x01
+    Leibman = 0x02
+    Seidel = 0x03
+    SOR = 0x04
+
+
+def calculate_grid(start, end, steps):
+    n = steps + 1
+    h = (end - start) / steps
+    return n, h
+
+
 @nb.jit(nopython=True)
 def norm_inf(arr, nx, ny):
     result = -1
@@ -30,6 +43,24 @@ def norm_inf(arr, nx, ny):
             result = sum
 
     return result
+
+
+@nb.jit(nopython=True)
+def simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
+    n = nx
+    counter = 0
+    while True:
+        for i in range(1, n - 1):
+            for j in range(1, n - 1):
+                u2[i][j] = 1 / 4 * (u1[i + 1][j] + u1[i - 1][j] +
+                                    u1[i][j + 1] + u1[i][j - 1])
+        if norm_inf(np.abs(u2 - u1), n, n) < eps:
+            break
+
+        counter += 1
+        u1, u2 = u2, u1
+
+    return u1
 
 
 @nb.jit(nopython=True)
@@ -52,52 +83,16 @@ def leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
 
 
 @nb.jit(nopython=True)
-def simple_calc(u1, u2, n, eps):
-    counter = 0
-    while True:
-        for i in range(1, n - 1):
-            for j in range(1, n - 1):
-                u2[i][j] = 1 / 4 * (u1[i + 1][j] + u1[i - 1][j] +
-                                    u1[i][j + 1] + u1[i][j - 1])
-        if norm_inf(np.abs(u2 - u1), n, n) < eps:
-            break
-
-        counter += 1
-        u1, u2 = u2, u1
-
-    return u1
+def seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
+    pass
 
 
-def calculate_grid(start, end, steps):
-    n = steps + 1
-    h = (end - start) / steps
-    return n, h
+@nb.jit(nopython=True)
+def sor_calc(u1, u2, nx, ny, a, b, c, d, e, eps):
+    pass
 
 
-def e2d_solver_simple(e2d, steps_x, steps_y, eps):
-    x1, x2 = e2d.x
-    y1, y2 = e2d.y
-    n, h = calculate_grid(x1, x2, steps_x)
-
-    u1 = np.zeros((n, n), dtype=np.float64)
-    u2 = np.zeros((n, n), dtype=np.float64)
-
-    for j in range(0, n):
-        y = y1 + j * h
-        u1[0][j] = u2[0][j] = e2d.mu1(y)
-        u1[n - 1][j] = u2[n - 1][j] = e2d.mu2(y)
-
-    for i in range(0, n):
-        x = x1 + i * h
-        u1[i][0] = u2[i][0] = e2d.mu3(x)
-        u1[i][n - 1] = u2[i][n - 1] = e2d.mu4(x)
-
-    u = simple_calc(u1, u2, n, eps)
-
-    return u, n, n, h, h
-
-
-def e2d_solver_leibmann(e2d, steps_x, steps_y, eps):
+def e2d_solver(method, e2d, steps_x, steps_y, eps):
     x1, x2 = e2d.x
     y1, y2 = e2d.y
     nx, hx = calculate_grid(x1, x2, steps_x)
@@ -122,6 +117,16 @@ def e2d_solver_leibmann(e2d, steps_x, steps_y, eps):
     d = e2d.c / 2 / hy - e2d.a / hy ** 2
     e = - (e2d.a / hy ** 2 + e2d.c / 2 / hy)
 
-    u = leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+    u = None
+    if method == SolverMethod.Simple:
+        u = simple_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+    elif method == SolverMethod.Leibman:
+        u = leibman_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+    elif method == SolverMethod.Seidel:
+        u = seidel_calc(u1, u2, nx, ny, a, b, c, d, e, eps)
+    elif method == SolverMethod.SOR:
+        u = sor_solver(u1, u2, nx, ny, a, b, c, d, e, eps)
+    else:
+        raise RuntimeError("Bad method type")
 
     return u, nx, ny, hx, hy
