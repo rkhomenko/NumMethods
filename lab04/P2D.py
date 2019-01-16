@@ -94,6 +94,8 @@ def ad_calc(sigma, omega, hx, hy, ht,
     ux = np.zeros(nx, dtype=np.float64)
     uy = np.zeros(ny, dtype=np.float64)
 
+    results = []
+
     for i in range(0, ny):
         for j in range(0, ny):
             u1[i][j] = phi(x1 + i * hx, y1 + j * hy)
@@ -126,7 +128,7 @@ def ad_calc(sigma, omega, hx, hy, ht,
 
         for i in range(0, nx):
             u2[i][0] = mu3(x1 + i * hx, tk1)
-            u2[i][ny - 1] = u2[i][ny - 2] + hy * mu4(x1 + i * hx, tk2)
+            u2[i][ny - 1] = u2[i][ny - 2] + hy * mu4(x1 + i * hx, tk1)
 
         # k + 1
         for i in range(1, nx - 1):
@@ -154,9 +156,11 @@ def ad_calc(sigma, omega, hx, hy, ht,
             u3[0][j] = mu1(y1 + j * hy, tk2)
             u3[nx - 1][j] = u3[nx - 2][j] + hx * mu2(y1 + j * hy, tk2)
 
+        results.append(np.copy(u3))
+
         u1, u3 = u3, u1
 
-    return u1
+    return results
 
 
 @nb.jit(nopython=True)
@@ -202,7 +206,7 @@ def p2d_solver(method, p2d, steps_x, steps_y, steps_t):
     else:
         raise RuntimeError("Bad method type")
 
-    return results, nx, ny, hx, hy
+    return results, nx, ny, nt, hx, hy, ht
 
 
 
